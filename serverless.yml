@@ -1,0 +1,63 @@
+service: sofya-forms-be
+frameworkVersion: '3'
+
+plugins:
+  - serverless-offline
+
+custom:
+  tableName: 'sofya-forms-table-${sls:stage}'
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource: "*"
+  environment:
+    FORMS_TABLE: ${self:custom.tableName}
+  httpApi:
+    cors: true
+    
+functions:
+  api:
+    handler: handler.handler
+    events:
+      - httpApi: '*'
+
+resources:
+  Resources:
+    FormsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: documentId
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: templateId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: documentId
+            KeyType: HASH
+          - AttributeName: userId
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:custom.tableName}
+        GlobalSecondaryIndexes:
+          - IndexName: userId-templateId-index
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+              - AttributeName: templateId
+                KeyType: RANGE
+            Projection:
+              ProjectionType: 'ALL'
